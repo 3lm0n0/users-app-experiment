@@ -1,8 +1,10 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"time"
 	u "user/domain"
 
 	"github.com/joho/godotenv"
@@ -37,7 +39,7 @@ func NewDatabaseConnection(automigrate bool) (*gorm.DB, error) {
 		panic("Database connection failed")
 	}
 
-	if automigrate == true {
+	if automigrate {
 		database.AutoMigrate(&u.User{})
 		if err != nil {
 			fmt.Println("err: ",err)
@@ -45,10 +47,14 @@ func NewDatabaseConnection(automigrate bool) (*gorm.DB, error) {
 		}
 	}
 
-	/*defer func() {
-    	dbInstance, _ := database.DB()
-    	_ = dbInstance.Close()
-	}()*/
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()		
+	
+	dbInstance, _ := database.DB()
+    err = dbInstance.PingContext(ctx)
+    if err != nil {
+        return nil, err
+    }
 
 	fmt.Println("Successfully connected to the database")
 
