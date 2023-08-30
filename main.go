@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	database "user/database"
 	handler "user/handler"
 	repository "user/repository"
@@ -11,47 +12,56 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// App encapsulates the application dependencies.
+type App struct {
+	Port        string
+}
 
 func main() {
-	// godotenv package to get .env variables.
-	envFile, err := loadEnv()
+	// Load environment variables
+	envConfig, err := loadEnv()
 	if err != nil {
-		log.Fatal(err)
-		log.Fatalf("Error loading environment variables file")
-		return
+		log.Fatalf("Error loading environment variables: %v", err)
 	}
-	// config data.
-	port := envFile["port"]
 
-	// Instantiates the database
+	// Initialize dependencies
 	db, err := database.NewDatabaseConnection(true)
 	if err != nil {
-		log.Fatal(err)
-		log.Fatalf("Error connecting to database")
-		return
+		log.Fatalf("Error connecting to database: %v", err)
 	}
+
+	userRepo := repository.NewUserRepository(db)
+	userService := service.NewUserService(service.UserService{Repository: userRepo})
 	
-	// Initialize the user repository.
-	ru := repository.NewUserRepository(db)
-
-	// Initialize the user service params.
-	sus := service.UserService{
-		Repository: ru,
-	}
-
-	// Initialize the user service.
-	us := service.NewUserService(sus)
-
-	// Initialize the user handlers.
-	uh := handler.NewUserHandler(us)
+	uh := handler.NewUserHandler(userService)
 	uh.Handlers()
 
-	// Initialize the server.
-	server := NewServer(port)
-	fmt.Println("server runnig ar port", port)
+	app := App{
+		Port:      envConfig["PORT"],
+	}
 
-	// log.
-	log.Fatal(server.Start())
+	// Initialize the server
+	app.startServer()
+}
+
+// startServer initializes the server and starts listening for requests.
+func (app *App) startServer() {
+	logger := log.New(os.Stdout, "SERVER: ", log.LstdFlags)
+	server := NewServer(app.Port, logger)
+	defer func() {
+		if err := server.Shutdown(); err != nil {
+			logger.Printf("Error during shutdown: %v", err)
+		}
+	}()
+	
+	err := server.Start()
+	if err != nil {
+		logger.Printf("Error during startup: %v", err)
+	}
+
+	// Wait for the shutdown signal
+	<-server.ShutdownChannel()
+	fmt.Println("Application has shut down.")
 }
 
 func loadEnv() (envMap map[string]string, err error) {

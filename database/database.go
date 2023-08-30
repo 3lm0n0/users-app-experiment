@@ -25,14 +25,14 @@ func NewDatabaseConnection(automigrate bool) (*gorm.DB, error) {
 
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s \n",
-		envFile["databaseHost"],
-		envFile["databaseUser"],
-		envFile["databasePassword"],
-		envFile["databaseName"],
-		envFile["databasePort"],
-		envFile["databaseSSLMode"],
+		envFile["DATABASEHOST"],
+		envFile["DATABASEUSER"],
+		envFile["DATABASEPASSWORD"],
+		envFile["DATABASENAME"],
+		envFile["DATABASEPORT"],
+		envFile["DATABASESSLMODE"],
 	)
-	fmt.Println("dsn: ",dsn)
+
 	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		fmt.Println("err: ",err)

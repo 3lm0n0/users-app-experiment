@@ -40,7 +40,7 @@ services:
 
 volumes:
   app:
-  db:                  
+  db:        
 
 # Networks to be created to facilitate communication between containers
 networks:

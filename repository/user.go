@@ -1,15 +1,18 @@
 package repository
 
 import (
+	"context"
 	domain "user/domain"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type User interface {
-	GetAll() ([]domain.User, error)
-	Create(user *domain.User) (*domain.User, error)
+	GetAll(ctx context.Context) ([]domain.User, error)
+	Get(ctx context.Context, ids []string) ([]domain.User, error)
+	Create(ctx context.Context, user *domain.User) (*domain.User, error)
 }
 
 type UserDB struct {
@@ -22,7 +25,7 @@ func NewUserRepository(db *gorm.DB) User {
 	}
 }
 
-func(r UserDB) GetAll() ([]domain.User, error) {
+func(r UserDB) GetAll(ctx context.Context) ([]domain.User, error) {
 	var users []domain.User
 	result := r.db.Find(&users)
 	if result.Error != nil {
@@ -32,7 +35,27 @@ func(r UserDB) GetAll() ([]domain.User, error) {
 	return users, nil
 }
 
-func(r UserDB) Create(user *domain.User) (*domain.User, error) {
+func(r UserDB) Get(ctx context.Context, ids []string) ([]domain.User, error) {
+	var users []domain.User
+	var user domain.User
+	
+	for _, id := range ids {
+		uuidParsed, err := uuid.Parse(id)
+		if err != nil {
+			return nil, err
+		}
+		user.ID = uuidParsed
+		result := r.db.Find(&user)
+		if result.Error != nil {
+			return nil, result.Error
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
+func(r UserDB) Create(ctx context.Context, user *domain.User) (*domain.User, error) {
 	hashedPass, err := hashPassword(user.Password)
 	if err != nil {
 		return nil, err
